@@ -20,7 +20,10 @@ import ru.nextconsulting.bpm.dto.NodeId
 import ru.nextconsulting.bpm.dto.SimpleMultipartFile
 import ru.nextconsulting.bpm.dto.request.EdgeDefinitionSearch
 import ru.nextconsulting.bpm.dto.request.EraseRequest
+import ru.nextconsulting.bpm.dto.search.SearchAttributeType
+import ru.nextconsulting.bpm.dto.search.SearchQueryRule
 import ru.nextconsulting.bpm.dto.search.SearchRequest
+import ru.nextconsulting.bpm.dto.search.SearchRule
 import ru.nextconsulting.bpm.dto.search.SearchVisibility
 import ru.nextconsulting.bpm.repository.*
 import ru.nextconsulting.bpm.repository.business.AttributeValue
@@ -76,22 +79,60 @@ class BusinessProcessRegulationScript implements GroovyScript {
                 .build()
         CustomScriptContext context = CustomScriptContext.create(parameters)
 
+//        ScriptParameter modelParam = ScriptParameter.builder()
+//                .paramType(SilaScriptParamType.NODE)
+//                .name('modelId')
+//                .value(JsonConverter.writeValueAsJson(NodeId.builder()
+//                        .repositoryId('51b21ba6-c89c-49e2-911e-9c88b609b728')
+//                        .id('1a8132f0-a43b-11e7-05b7-db7cafd96ef7')
+//                        .build())
+//                )
+//                .build()
+//        ScriptParameter nodesIdsParam = ScriptParameter.builder()
+//                .paramType(SilaScriptParamType.NODES_LIST)
+//                .name('nodesIdsList')
+//                .value('[{"id":"2f496489-0472-11e5-05b7-db7cafd96ef7","repositoryId":"51b21ba6-c89c-49e2-911e-9c88b609b728","serverId":"d45fe1b9-90eb-4e72-9f94-01d88e0434d9"}]')
+//                .build()
+//        ScriptParameter elementsIdsParam = ScriptParameter.builder()
+//                .paramType(SilaScriptParamType.STRING_LIST)
+//                .name('elementsIdsList')
+//                .value('["1a82b991-a43b-11e7-05b7-db7cafd96ef7"]')
+//                .build()
+//        ScriptParameter nodeIdParam = ScriptParameter.builder()
+//                .paramType(SilaScriptParamType.STRING)
+//                .name('nodeId')
+//                .value('{"id":"2f496489-0472-11e5-05b7-db7cafd96ef7","repositoryId":"51b21ba6-c89c-49e2-911e-9c88b609b728","serverId":"d45fe1b9-90eb-4e72-9f94-01d88e0434d9"}')
+//                .build()
+
         ScriptParameter modelParam = ScriptParameter.builder()
                 .paramType(SilaScriptParamType.NODE)
                 .name('modelId')
                 .value(JsonConverter.writeValueAsJson(NodeId.builder()
-                        .repositoryId('bcc41132-013f-45ce-8e73-f0a095f51ca5')
+                        .repositoryId('51b21ba6-c89c-49e2-911e-9c88b609b728')
                         .id('1a8132f0-a43b-11e7-05b7-db7cafd96ef7')
                         .build())
                 )
                 .build()
+        ScriptParameter nodesIdsParam = ScriptParameter.builder()
+                .paramType(SilaScriptParamType.NODES_LIST)
+                .name('nodesIdsList')
+                .value('[{"id":"e2831690-fc4d-11e3-05b7-db7cafd96ef7","repositoryId":"51b21ba6-c89c-49e2-911e-9c88b609b728","serverId":"d45fe1b9-90eb-4e72-9f94-01d88e0434d9"}]')
+                .build()
         ScriptParameter elementsIdsParam = ScriptParameter.builder()
                 .paramType(SilaScriptParamType.STRING_LIST)
                 .name('elementsIdsList')
-                .value('["1a82b990-a43b-11e7-05b7-db7cafd96ef7", "1a829281-a43b-11e7-05b7-db7cafd96ef7"]')
+                .value('["1a82b990-a43b-11e7-05b7-db7cafd96ef7"]')
                 .build()
+        ScriptParameter nodeIdParam = ScriptParameter.builder()
+                .paramType(SilaScriptParamType.STRING)
+                .name('nodeId')
+                .value('{"id":"e2831690-fc4d-11e3-05b7-db7cafd96ef7","repositoryId":"51b21ba6-c89c-49e2-911e-9c88b609b728","serverId":"d45fe1b9-90eb-4e72-9f94-01d88e0434d9"}')
+                .build()
+
         context.getParameters().add(modelParam)
+        context.getParameters().add(nodesIdsParam)
         context.getParameters().add(elementsIdsParam)
+        context.getParameters().add(nodeIdParam)
 
         BusinessProcessRegulationScript script = new BusinessProcessRegulationScript(context: context)
         script.execute()
@@ -211,7 +252,8 @@ class BusinessProcessRegulationScript implements GroovyScript {
         try {
             log.info("Запуск скрипта $SCRIPT_NAME $SCRIPT_VERSION от $SCRIPT_DATE")
 
-            String deep = ParamUtils.parse(context.findParameter('Глубина детализации регламента')) as String
+            // String deep = ParamUtils.parse(context.findParameter('Глубина детализации регламента')) as String
+            String deep = '3 уровень'
             String templateName = "reg_bp.docx"
             boolean isFirstLevel = context.modelId().id == FIRST_LEVEL_ID
 
@@ -275,8 +317,6 @@ class BusinessProcessRegulationScript implements GroovyScript {
                 saveCacheToFile()
             }
         }
-
-        println()
     }
 
     /**
@@ -623,6 +663,18 @@ class BusinessProcessRegulationScript implements GroovyScript {
 
     private List<FullModelDefinition> getSubDecomposition(FullModelDefinition fullModel, ObjectDefinition object, TreeNode folder, boolean isFirstLevel) {
         ModelApi modelApi = context.getApi(ModelApi.class)
+
+//        List<ObjectDefinitionNode> objects = fullModel.getObjects()
+//        ObjectDefinitionNode found_object = objects.find { it -> it.getNodeId().id == object._getNodeId().id }
+//        Set<ModelAssignment> assignments = found_object.getModelAssignments()
+//
+//        List<FullModelDefinition> subDecomposition = assignments.stream().map {assigment ->
+//            if (assigment.getModelId() != fullModel.getModel().getNodeId().id) {
+//                if (!isFirstLevel || assigment.getModelPath().contains(folder.getName())) {
+//                    getModelDefinition(modelApi, object._getNodeId().repositoryId, assigment.getModelId())
+//                }
+//            }
+//        }.collect(Collectors.toList())
 
         List<FullModelDefinition> subDecomposition = fullModel.getObjects()
                 .find { it -> it.getNodeId().id == object._getNodeId().id }
@@ -2236,15 +2288,23 @@ class BusinessProcessRegulationScript implements GroovyScript {
     private TreeNode findFolder(TreeRepository repository, String repositoryId, String folderId, String name) {
         SearchApi searchApi = context.getApi(SearchApi.class)
 
-        SearchRequest request = new SearchRequest()
-        request.setRootSearchNodeId(NodeId.builder().id(repositoryId).repositoryId(folderId).build())
-        request.setSearchText(name)
-        request.setSearchVisibility(SearchVisibility.NOT_DELETED)
+        SearchRule folderRule = SearchRule.builder()
+                .attributeType(SearchAttributeType.SYSTEM)
+                .attributeTypeId('name')
+                .queryRule(SearchQueryRule.EQUALS)
+                .values(Arrays.asList(name))
+                .build()
+
+        SearchRequest request = SearchRequest.builder()
+                .rootSearchNodeId(NodeId.builder().id(repositoryId).repositoryId(folderId).build())
+                .nodeTypes([NodeType.FOLDER])
+                .searchRules(Arrays.asList(folderRule))
+                .searchVisibility(SearchVisibility.NOT_DELETED)
+                .build()
 
         def searchResults = searchApi.searchExtended(request).getResultList()
 
         SearchResult sr = searchResults.stream()
-                .filter { it.nodeType == NodeType.FOLDER }
                 .findFirst()
                 .orElse(null)
 
